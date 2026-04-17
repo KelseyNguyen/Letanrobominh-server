@@ -109,27 +109,54 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ── Face event handler ───────────────────────────────────────────────
 async def _on_face(evt: dict):
-    etype  = evt.get("type")
-    person = evt.get("person")
+    etype    = evt.get("type")
+    person   = evt.get("person")
+    face_key = evt.get("face_key", "unknown")
 
     if etype == "recognized" and person:
-        name   = person["name"]
-        ptype  = person["type"]
-        text   = (f"Chào {name}! Chào mừng trở lại." if ptype == "employee"
-                  else f"Chào {name}! Rất vui được gặp lại.")
-        sid    = f"face_{person['id']}"
+        name  = person["name"]
+        ptype = person["type"]
+        text  = (f"Chào {name}! Chào mừng trở lại."
+                 if ptype == "employee"
+                 else f"Chào {name}! Rất vui được gặp lại anh/chị.")
+        sid   = f"face_{person['id']}"
         if sid not in sessions:
             sessions[sid] = ChatSession(
                 guest_id   = person["id"] if ptype == "guest" else None,
                 guest_name = name         if ptype == "guest" else None)
+        # Lưu session_key vào face_engine để biết session nào đang active
+        face.session_start(face_key)
+        sessions[sid]._face_key = face_key
+        await _broadcast_tablet({"type": "session_start", "session_key": sid})
         await _say_and_broadcast(text, sid)
+
+        # Cập nhật lượt ghé thăm nếu là khách
+        if ptype == "guest":
+            asyncio.create_task(_update_guest_visit(person["id"]))
 
     elif etype == "unknown":
         text = "Xin chào! Em là Aria, lễ tân của công ty. Anh/chị cần em hỗ trợ gì không ạ?"
         sid  = f"new_{int(datetime.now().timestamp())}"
         sessions[sid] = ChatSession()
+        sessions[sid]._face_key = face_key
+        face.session_start(face_key)
         await _broadcast_tablet({"type": "face_unknown", "greeting": text, "session_key": sid})
         await _say_and_broadcast(text, sid)
+
+
+async def _update_guest_visit(guest_id: int):
+    db = SessionLocal()
+    try:
+        from models.db import Guest
+        g = db.query(Guest).filter(Guest.id == guest_id).first()
+        if g:
+            g.visit_count = (g.visit_count or 0) + 1
+            g.last_visit  = datetime.utcnow()
+            db.commit()
+    except Exception as e:
+        log.error(f"Update guest visit error: {e}")
+    finally:
+        db.close()
 
 
 async def _on_telegram_reply(reply_text: str, emp_name: str):
@@ -173,15 +200,20 @@ async def _handle_tablet(msg: dict, cid: str, ws: WebSocket):
         if not text.strip():
             return
 
+        # Báo cho face engine biết khách vẫn đang tương tác
+        if face:
+            face.session_activity()
+
         await ws.send_text(json.dumps({"type": "user_text", "text": text}))
 
         session = sessions.setdefault(sid, ChatSession())
         result  = await llm.respond(session, text)
+        intent  = result.get("intent", "chat")
 
         await ws.send_text(json.dumps({
             "type":        "assistant_text",
             "text":        result["text"],
-            "intent":      result.get("intent"),
+            "intent":      intent,
             "robot_model": result.get("robot_model"),
             "guest_name":  result.get("guest_name"),
         }))
@@ -195,12 +227,21 @@ async def _handle_tablet(msg: dict, cid: str, ws: WebSocket):
             await ws.send_text(json.dumps(
                 {"type": "audio", "data": base64.b64encode(audio).decode()}))
 
+        # Khách tạm biệt → kết thúc session, mở lại camera nhận diện
+        if intent == "farewell":
+            if face:
+                face.session_end()
+            sessions.pop(sid, None)
+            bookings.pop(sid, None)
+            await ws.send_text(json.dumps({"type": "session_end"}))
+            log.info(f"Session {sid} ended by farewell")
+
         # Telegram notify nếu khách muốn gặp nhân viên
-        if result.get("intent") == "contacting":
+        if intent == "contacting":
             asyncio.create_task(_notify_employee(session, result["text"]))
 
         # Booking flow
-        if result.get("intent") == "booking":
+        if intent == "booking":
             asyncio.create_task(_booking_step(sid, text, session, ws))
 
         asyncio.create_task(_save_conv(session, text, result["text"]))
@@ -220,13 +261,16 @@ async def _handle_tablet(msg: dict, cid: str, ws: WebSocket):
         text = msg.get("text", "").strip()
         if not text:
             return
+        if face:
+            face.session_activity()
         session = sessions.setdefault(sid, ChatSession())
         result  = await llm.respond(session, text)
+        intent  = result.get("intent", "chat")
 
         await ws.send_text(json.dumps({
             "type":        "assistant_text",
             "text":        result["text"],
-            "intent":      result.get("intent"),
+            "intent":      intent,
             "robot_model": result.get("robot_model"),
         }))
         if result.get("robot_model"):
@@ -236,6 +280,11 @@ async def _handle_tablet(msg: dict, cid: str, ws: WebSocket):
         if audio:
             await ws.send_text(json.dumps(
                 {"type": "audio", "data": base64.b64encode(audio).decode()}))
+        if intent == "farewell":
+            if face:
+                face.session_end()
+            sessions.pop(sid, None)
+            await ws.send_text(json.dumps({"type": "session_end"}))
 
     # ── Admin say (phát qua loa từ Telegram hoặc Admin UI) ──────────
     elif t == "admin_say":
@@ -612,4 +661,45 @@ async def tablet():  return HTMLResponse(_html("frontend-tablet/index.html"))
 async def catalog(): return HTMLResponse(_html("frontend-tablet/catalog.html"))
 
 @app.get("/admin",  response_class=HTMLResponse)
-async def admin():   return HTMLResponse(_html("frontend-admin/index.html"))
+async def admin_ui(pwd: str = ""):
+    admin_pwd = os.getenv("ADMIN_PASSWORD", "aria2024")
+    if pwd != admin_pwd:
+        return HTMLResponse("""<!DOCTYPE html>
+<html lang="vi"><head><meta charset="UTF-8">
+<title>Aria Admin</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f1117;display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui}
+.box{background:#161b24;border:1px solid rgba(100,160,255,.2);border-radius:12px;padding:32px;width:320px;text-align:center}
+h2{color:#4a9eff;font-size:18px;margin-bottom:6px}
+p{color:rgba(150,180,220,.5);font-size:13px;margin-bottom:20px}
+input{width:100%;padding:10px;background:#1e2533;border:1px solid rgba(100,160,255,.2);border-radius:8px;color:#d4e4ff;font-size:14px;outline:none;margin-bottom:12px;text-align:center;letter-spacing:3px}
+button{width:100%;padding:10px;background:#4a9eff;border:none;border-radius:8px;color:#fff;font-size:14px;cursor:pointer;font-weight:500}
+button:hover{background:#3a8eef}
+.err{color:#ff5b5b;font-size:12px;margin-top:10px;display:none}
+</style></head>
+<body>
+<div class="box">
+  <h2>Aria Admin</h2>
+  <p>Nhập mật khẩu để truy cập</p>
+  <input type="password" id="pw" placeholder="Mật khẩu" onkeydown="if(event.key==='Enter')login()">
+  <button onclick="login()">Đăng nhập</button>
+  <div class="err" id="err">Mật khẩu không đúng</div>
+</div>
+<script>
+function login(){
+  const pw = document.getElementById('pw').value;
+  if(pw) window.location.href = '/admin?pwd=' + encodeURIComponent(pw);
+}
+</script>
+</body></html>""")
+    return HTMLResponse(_html("frontend-admin/index.html"))
+
+# API để Tablet lấy session_key hiện tại
+@app.get("/api/session/status")
+async def session_status():
+    return {
+        "in_session": face.in_session if face else False,
+        "active_sessions": len(sessions),
+    }
+
