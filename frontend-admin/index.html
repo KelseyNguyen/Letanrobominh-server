@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aria Admin</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f1117;--bg2:#161b24;--bg3:#1e2533;--bd:rgba(100,160,255,.14);--bd2:rgba(100,160,255,.28);--blue:#4a9eff;--green:#3dd68c;--red:#ff5b5b;--amber:#ffb347;--text:#d4e4ff;--muted:rgba(150,180,220,.55);--r:10px}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;font-size:14px;min-height:100vh;display:flex}
+/* Sidebar */
+.sidebar{width:210px;background:var(--bg2);border-right:1px solid var(--bd);padding:14px 0;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{padding:0 16px 14px;border-bottom:1px solid var(--bd);margin-bottom:8px}
+.logo-t{font-size:15px;font-weight:600;color:var(--blue)}.logo-s{font-size:11px;color:var(--muted);margin-top:1px}
+.nsec{font-size:10px;letter-spacing:1.3px;color:var(--muted);padding:10px 16px 4px;text-transform:uppercase}
+.ni{display:flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;color:var(--muted);font-size:13px;transition:.15s}
+.ni:hover,.ni.on{color:var(--text);background:rgba(74,158,255,.1);border-right:2px solid var(--blue)}
+.nicon{width:16px;text-align:center;font-size:14px}
+/* Main */
+.main{flex:1;padding:18px;overflow-y:auto}
+.page{display:none}.page.on{display:block}
+.ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.pt{font-size:15px;font-weight:600}.pt span{color:var(--blue)}
+/* Stats */
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px}
+.sc{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:12px}
+.sl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.sv{font-size:24px;font-weight:600;margin-top:4px}
+.sv.bl{color:var(--blue)}.sv.gr{color:var(--green)}.sv.am{color:var(--amber)}
+/* Panel */
+.panel{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.pth{font-size:13px;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--bd)}
+/* Table */
+.tw{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:12px}
+table{width:100%;border-collapse:collapse}
+th{padding:8px 11px;text-align:left;font-size:10px;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--bd);background:var(--bg3)}
+td{padding:8px 11px;border-bottom:1px solid rgba(100,160,255,.05);font-size:12px;vertical-align:middle}
+tr:last-child td{border:none}
+tr:hover td{background:rgba(74,158,255,.04)}
+/* Badge */
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.bg{background:rgba(61,214,140,.15);color:var(--green)}.bb{background:rgba(74,158,255,.15);color:var(--blue)}
+.ba{background:rgba(255,179,71,.15);color:var(--amber)}.br{background:rgba(255,91,91,.15);color:var(--red)}
+/* Upload */
+.uz{border:2px dashed var(--bd2);border-radius:var(--r);padding:28px;text-align:center;cursor:pointer;transition:.2s;background:var(--bg2)}
+.uz:hover,.uz.drag{border-color:var(--blue);background:rgba(74,158,255,.05)}
+.uicon{font-size:30px;margin-bottom:6px}.utit{font-size:13px;margin-bottom:3px}.usub{font-size:11px;color:var(--muted)}
+/* Form */
+.fg{margin-bottom:10px}
+label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+input,select,textarea{width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--bd);border-radius:7px;color:var(--text);font-size:13px;outline:none;transition:.15s;font-family:inherit}
+input:focus,select:focus{border-color:var(--blue)}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* Button */
+.btn{padding:8px 14px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:500;transition:.15s;font-family:inherit}
+.bp{background:var(--blue);color:#fff}.bp:hover{background:#3a8eef}
+.bg2{background:rgba(74,158,255,.1);color:var(--blue);border:1px solid rgba(74,158,255,.25)}.bg2:hover{background:rgba(74,158,255,.2)}
+.bd2b{background:rgba(255,91,91,.1);color:var(--red);border:1px solid rgba(255,91,91,.2)}
+.bs{padding:5px 10px;font-size:12px}
+/* Progress */
+.prog{background:var(--bg3);border-radius:4px;height:5px;overflow:hidden;margin-top:5px}
+.progb{height:100%;background:var(--blue);border-radius:4px;transition:width .4s}
+/* Chat log */
+.clog{background:var(--bg);border:1px solid var(--bd);border-radius:var(--r);height:260px;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px}
+.cm{padding:7px 10px;border-radius:8px;font-size:13px;max-width:82%}
+.cm.u{background:rgba(74,158,255,.12);align-self:flex-end}.cm.a{background:var(--bg3);align-self:flex-start}
+.cm .me{font-size:10px;color:var(--muted);margin-bottom:3px}
+/* WS pill */
+.wspill{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);padding:5px 10px;background:var(--bg3);border-radius:20px;border:1px solid var(--bd)}
+.wsd{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
+.wsd.off{background:var(--red);box-shadow:0 0 6px var(--red)}
+/* Toast */
+#toast{position:fixed;bottom:18px;right:18px;background:var(--bg3);border:1px solid var(--bd2);border-radius:var(--r);padding:10px 15px;font-size:13px;z-index:999;transform:translateY(70px);opacity:0;transition:.25s;pointer-events:none}
+#toast.show{transform:translateY(0);opacity:1}
+@media(max-width:640px){.sidebar{display:none}.fr{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<nav class="sidebar">
+  <div class="logo"><div class="logo-t">🤖 Aria Admin</div><div class="logo-s">v2.0 · Groq API</div></div>
+  <div class="nsec">Tổng quan</div>
+  <div class="ni on" onclick="go('dash',this)"><span class="nicon">📊</span>Dashboard</div>
+  <div class="ni" onclick="go('monitor',this)"><span class="nicon">👁️</span>Giám sát live</div>
+  <div class="nsec">Quản lý</div>
+  <div class="ni" onclick="go('employees',this)"><span class="nicon">👔</span>Nhân viên</div>
+  <div class="ni" onclick="go('guests',this)"><span class="nicon">👤</span>Khách hàng</div>
+  <div class="ni" onclick="go('appointments',this)"><span class="nicon">📅</span>Lịch hẹn</div>
+  <div class="nsec">Training AI</div>
+  <div class="ni" onclick="go('kb',this)"><span class="nicon">📚</span>Knowledge Base</div>
+  <div class="ni" onclick="go('chat',this)"><span class="nicon">💬</span>Test hội thoại</div>
+  <div class="nsec">Cài đặt</div>
+  <div class="ni" onclick="go('telegram',this)"><span class="nicon">✈️</span>Telegram Bot</div>
+  <div class="ni" onclick="go('voice',this)"><span class="nicon">🎙️</span>Giọng nói</div>
+</nav>
+
+<main class="main">
+
+<!-- Dashboard -->
+<div id="page-dash" class="page on">
+  <div class="ph">
+    <div class="pt">Dashboard <span>Tổng quan</span></div>
+    <div class="wspill"><div class="wsd off" id="wsd"></div><span id="wsl">Đang kết nối...</span></div>
+  </div>
+  <div class="sgrid">
+    <div class="sc"><div class="sl">Nhân viên</div><div class="sv bl" id="se">--</div></div>
+    <div class="sc"><div class="sl">Khách</div><div class="sv gr" id="sg">--</div></div>
+    <div class="sc"><div class="sl">Tài liệu</div><div class="sv bl" id="sd">--</div></div>
+    <div class="sc"><div class="sl">Lịch hẹn</div><div class="sv am" id="sa">--</div></div>
+    <div class="sc"><div class="sl">Phiên live</div><div class="sv gr" id="ss">--</div></div>
+    <div class="sc"><div class="sl">Tablet</div><div class="sv bl" id="st">--</div></div>
+  </div>
+  <div class="panel">
+    <div class="pth">Phát nội dung qua loa Tablet</div>
+    <div style="display:flex;gap:10px">
+      <input id="say-t" placeholder="Aria sẽ nói nội dung này..." style="flex:1">
+      <button class="btn bp" onclick="adminSay()">🔊 Phát</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="pth">Kiểm tra AI nhanh</div>
+    <div style="display:flex;gap:10px">
+      <input id="test-q" placeholder="Nhập câu hỏi test..." style="flex:1">
+      <button class="btn bg2" onclick="testAI()">Test ▶</button>
+    </div>
+    <div id="test-r" style="display:none;margin-top:10px;padding:10px;background:var(--bg);border-radius:7px;font-size:13px;color:var(--muted)"></div>
+  </div>
+</div>
+
+<!-- Monitor -->
+<div id="page-monitor" class="page">
+  <div class="ph"><div class="pt">Giám sát <span>Live</span></div><button class="btn bg2 bs" onclick="clearLog()">Xóa</button></div>
+  <div class="clog" id="livelog"><div style="color:var(--muted);text-align:center;margin:auto">Chờ sự kiện...</div></div>
+</div>
+
+<!-- Employees -->
+<div id="page-employees" class="page">
+  <div class="ph"><div class="pt">Nhân viên</div><button class="btn bp bs" onclick="toggleEF()">+ Thêm</button></div>
+  <div id="empform" class="panel" style="display:none">
+    <div class="pth">Thêm nhân viên mới</div>
+    <div class="fr">
+      <div class="fg"><label>Họ tên *</label><input id="en" placeholder="Nguyễn Văn A"></div>
+      <div class="fg"><label>Phòng ban</label><input id="ed" placeholder="Kinh doanh"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Chức vụ</label><input id="ep" placeholder="Trưởng phòng"></div>
+      <div class="fg"><label>Điện thoại</label><input id="eph" placeholder="0901234567"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Email</label><input id="eem" placeholder="email@cty.com"></div>
+      <div class="fg"><label>Telegram ID <span style="color:var(--muted);font-size:10px">(lấy qua /setid)</span></label><input id="et" placeholder="123456789"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn bp" onclick="addEmp()">Lưu</button>
+      <button class="btn bg2" onclick="toggleEF()">Hủy</button>
+    </div>
+  </div>
+  <div class="tw">
+    <table><thead><tr><th>Tên</th><th>Phòng ban</th><th>Điện thoại</th><th>Telegram</th><th>Khuôn mặt</th><th></th></tr></thead>
+    <tbody id="empt"><tr><td colspan="6" style="text-align:center;color:var(--muted)">Đang tải...</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- Guests -->
+<div id="page-guests" class="page">
+  <div class="ph"><div class="pt">Khách hàng <span>đã ghé thăm</span></div></div>
+  <div class="tw">
+    <table><thead><tr><th>Tên</th><th>Công ty</th><th>Số lần</th><th>Lần cuối</th></tr></thead>
+    <tbody id="guestt"><tr><td colspan="4" style="text-align:center;color:var(--muted)">Đang tải...</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- Appointments -->
+<div id="page-appointments" class="page">
+  <div class="ph"><div class="pt">Lịch hẹn</div></div>
+  <div class="tw">
+    <table><thead><tr><th>Khách</th><th>Nhân viên</th><th>Thời gian</th><th>Trạng thái</th></tr></thead>
+    <tbody id="apptt"><tr><td colspan="4" style="text-align:center;color:var(--muted)">Đang tải...</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- Knowledge Base -->
+<div id="page-kb" class="page">
+  <div class="ph"><div class="pt">Knowledge Base <span>Tài liệu training</span></div></div>
+  <div class="uz" id="uz" onclick="document.getElementById('fi').click()"
+    ondragover="event.preventDefault();this.classList.add('drag')"
+    ondragleave="this.classList.remove('drag')"
+    ondrop="event.preventDefault();this.classList.remove('drag');uploadFiles(event.dataTransfer.files)">
+    <input type="file" id="fi" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.txt,.md,.png,.jpg" style="display:none" onchange="uploadFiles(this.files)">
+    <div class="uicon">📂</div>
+    <div class="utit">Kéo thả hoặc nhấn để upload</div>
+    <div class="usub">PDF, DOCX, XLSX, TXT, Markdown, ảnh</div>
+  </div>
+  <div id="upprog" style="display:none;margin:10px 0">
+    <div id="uptxt" style="font-size:12px;margin-bottom:4px">Uploading...</div>
+    <div class="prog"><div class="progb" id="upbar" style="width:0%"></div></div>
+  </div>
+  <div class="tw" style="margin-top:12px">
+    <table><thead><tr><th>File</th><th>Loại</th><th>Trạng thái</th><th>Chunks</th><th>Upload lúc</th><th></th></tr></thead>
+    <tbody id="doct"><tr><td colspan="6" style="text-align:center;color:var(--muted)">Chưa có tài liệu</td></tr></tbody></table>
+  </div>
+</div>
+
+<!-- Test chat -->
+<div id="page-chat" class="page">
+  <div class="ph"><div class="pt">Test <span>Hội thoại</span></div></div>
+  <div class="clog" id="chatlog" style="height:300px"></div>
+  <div style="display:flex;gap:10px;margin-top:10px">
+    <input id="chatin" placeholder="Nhập câu hỏi..." onkeydown="if(event.key==='Enter')sendChat()" style="flex:1">
+    <button class="btn bp" onclick="sendChat()">Gửi</button>
+  </div>
+</div>
+
+<!-- Telegram -->
+<div id="page-telegram" class="page">
+  <div class="ph"><div class="pt">Telegram Bot</div></div>
+  <div class="panel">
+    <div class="pth">Trạng thái kết nối</div>
+    <button class="btn bg2" onclick="checkTg()">🔍 Kiểm tra</button>
+    <div id="tgr" style="display:none;margin-top:10px;padding:10px;background:var(--bg);border-radius:7px;font-size:13px"></div>
+  </div>
+  <div class="panel">
+    <div class="pth">Hướng dẫn nhanh</div>
+    <div style="font-size:13px;line-height:2;color:var(--muted)">
+      1. Telegram → tìm <code style="background:var(--bg3);padding:1px 5px;border-radius:3px">@BotFather</code> → <code>/newbot</code> → copy token<br>
+      2. Dán vào <code>TELEGRAM_BOT_TOKEN</code> trong biến môi trường Railway<br>
+      3. Mỗi nhân viên chat với bot → gõ <code>/setid</code> → copy số ID → dán vào Admin → Nhân viên
+    </div>
+  </div>
+  <div class="panel">
+    <div class="pth">Gửi tin nhắn test</div>
+    <div class="fr">
+      <div class="fg"><label>Chat ID</label><input id="tgid" placeholder="123456789"></div>
+      <div class="fg"><label>Nội dung</label><input id="tgmsg" value="Test từ Aria 🤖"></div>
+    </div>
+    <button class="btn bp" onclick="sendTgTest()">📤 Gửi</button>
+  </div>
+</div>
+
+<!-- Voice -->
+<div id="page-voice" class="page">
+  <div class="ph"><div class="pt">Giọng nói <span>Aria (gTTS)</span></div></div>
+  <div class="panel">
+    <div class="pth">Cài đặt</div>
+    <div class="fr">
+      <div class="fg">
+        <label>Tốc độ nói</label>
+        <input type="range" id="vspd" min="70" max="135" value="100" step="5">
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">Tốc độ: <span id="vspdv">1.00</span>x</div>
+      </div>
+      <div class="fg">
+        <label>Ngôn ngữ</label>
+        <select id="vlang">
+          <option value="vi" selected>Tiếng Việt</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn bp" onclick="saveVoice()">💾 Lưu</button>
+      <button class="btn bg2" onclick="previewVoice()">▶ Nghe thử</button>
+    </div>
+    <audio id="vprev" controls style="display:none;width:100%;margin-top:10px"></audio>
+  </div>
+  <div class="panel">
+    <div class="pth">Test TTS</div>
+    <div style="display:flex;gap:10px">
+      <input id="ttstext" value="Xin chào! Em là Aria, lễ tân của công ty." style="flex:1">
+      <button class="btn bp" onclick="testTTS()">▶ Test</button>
+    </div>
+    <audio id="ttsaud" controls style="display:none;width:100%;margin-top:10px"></audio>
+  </div>
+</div>
+
+</main>
+<script>
+const API = location.origin;
+const WS_URL = `${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/admin/adm_${Date.now()}`;
+let ws, chatSid = 'admin_' + Date.now();
+
+// ── Navigation ───────────────────────────────────────────────────
+function go(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
+  document.getElementById('page-' + name).classList.add('on');
+  if (el) el.classList.add('on');
+  const loaders = { employees: loadEmps, guests: loadGuests, appointments: loadAppts, kb: loadDocs };
+  if (loaders[name]) loaders[name]();
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen  = () => { setWS(true); loadStats(); };
+  ws.onclose = () => { setWS(false); setTimeout(connect, 3000); };
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.type === 'doc_ready') { toast(`Tài liệu xử lý: ${m.status}`, m.status==='ready'?'green':'red'); loadDocs(); }
+    addLog(JSON.stringify(m));
+  };
+}
+function setWS(ok) {
+  document.getElementById('wsd').className = 'wsd' + (ok ? '' : ' off');
+  document.getElementById('wsl').textContent = ok ? 'Kết nối tốt' : 'Mất kết nối';
+}
+
+// ── Stats ────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const d = await apiFetch('/api/stats');
+    document.getElementById('se').textContent = d.employees;
+    document.getElementById('sg').textContent = d.guests;
+    document.getElementById('sd').textContent = d.docs;
+    document.getElementById('sa').textContent = d.appointments;
+    document.getElementById('ss').textContent = d.sessions;
+    document.getElementById('st').textContent = d.tablets;
+  } catch(e) {}
+}
+setInterval(loadStats, 15000);
+
+// ── Employees ────────────────────────────────────────────────────
+async function loadEmps() {
+  const rows = await apiFetch('/api/employees');
+  const tb = document.getElementById('empt');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Chưa có nhân viên</td></tr>'; return; }
+  tb.innerHTML = rows.map(e => `
+    <tr>
+      <td><strong>${e.name}</strong></td>
+      <td>${e.department||'-'}</td>
+      <td>${e.phone||'-'}</td>
+      <td>${e.telegram_id ? `<span class="badge bg">${e.telegram_id}</span>` : '<span class="badge ba">Chưa có</span>'}</td>
+      <td>
+        <label style="cursor:pointer">
+          <input type="file" accept="image/*" style="display:none" onchange="uploadFace(${e.id},this)">
+          <span class="badge bb" style="cursor:pointer">📷 Upload ảnh</span>
+        </label>
+      </td>
+      <td>
+        <button class="btn bd2b bs" onclick="deleteEmp(${e.id})">Xóa</button>
+      </td>
+    </tr>`).join('');
+}
+
+function toggleEF() {
+  const f = document.getElementById('empform');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+async function addEmp() {
+  const name = document.getElementById('en').value.trim();
+  if (!name) { toast('Nhập tên nhân viên', 'red'); return; }
+  await apiFetch('/api/employees', 'POST', {
+    name,
+    department:  document.getElementById('ed').value,
+    position:    document.getElementById('ep').value,
+    phone:       document.getElementById('eph').value,
+    email:       document.getElementById('eem').value,
+    telegram_id: document.getElementById('et').value,
+  });
+  toast('Đã thêm nhân viên', 'green');
+  toggleEF();
+  loadEmps();
+}
+
+async function deleteEmp(id) {
+  if (!confirm('Xóa nhân viên này?')) return;
+  await apiFetch(`/api/employees/${id}`, 'DELETE');
+  toast('Đã xóa', 'amber'); loadEmps();
+}
+
+async function uploadFace(id, inp) {
+  const fd = new FormData();
+  fd.append('file', inp.files[0]);
+  const r = await fetch(`${API}/api/employees/${id}/face`, { method: 'POST', body: fd });
+  const d = await r.json();
+  if (r.ok) toast('Đã lưu khuôn mặt ✓', 'green');
+  else toast('Lỗi: ' + (d.detail || 'Không tìm thấy mặt trong ảnh'), 'red');
+}
+
+// ── Guests ───────────────────────────────────────────────────────
+async function loadGuests() {
+  const rows = await apiFetch('/api/guests');
+  const tb = document.getElementById('guestt');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Chưa có khách</td></tr>'; return; }
+  tb.innerHTML = rows.map(g => `
+    <tr>
+      <td><strong>${g.name||'Ẩn danh'}</strong></td>
+      <td>${g.company||'-'}</td>
+      <td><span class="badge bb">${g.visits} lần</span></td>
+      <td>${g.last ? new Date(g.last).toLocaleString('vi-VN') : '-'}</td>
+    </tr>`).join('');
+}
+
+// ── Appointments ─────────────────────────────────────────────────
+async function loadAppts() {
+  const rows = await apiFetch('/api/appointments');
+  const tb = document.getElementById('apptt');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted)">Chưa có lịch hẹn</td></tr>'; return; }
+  const sm = { confirmed:'bg', pending:'ba', cancelled:'br' };
+  tb.innerHTML = rows.map(a => `
+    <tr>
+      <td>${a.guest||'Khách'}</td>
+      <td>${a.employee||'-'}</td>
+      <td>${new Date(a.time).toLocaleString('vi-VN')}</td>
+      <td><span class="badge ${sm[a.status]||'bb'}">${a.status}</span></td>
+    </tr>`).join('');
+}
+
+// ── Knowledge Base ────────────────────────────────────────────────
+async function loadDocs() {
+  const rows = await apiFetch('/api/knowledge/docs');
+  const tb = document.getElementById('doct');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Chưa có tài liệu</td></tr>'; return; }
+  const sm = { ready:'bg', processing:'ba', error:'br', pending:'bb' };
+  tb.innerHTML = rows.map(d => `
+    <tr>
+      <td><strong>${d.filename}</strong></td>
+      <td><span class="badge bb">${d.type.toUpperCase()}</span></td>
+      <td><span class="badge ${sm[d.status]||'bb'}">${d.status}</span></td>
+      <td>${d.chunks||0}</td>
+      <td>${new Date(d.uploaded).toLocaleString('vi-VN')}</td>
+      <td><button class="btn bd2b bs" onclick="deleteDoc(${d.id})">Xóa</button></td>
+    </tr>`).join('');
+}
+
+async function uploadFiles(files) {
+  for (const f of files) {
+    document.getElementById('upprog').style.display = 'block';
+    document.getElementById('uptxt').textContent = `Uploading: ${f.name}`;
+    document.getElementById('upbar').style.width = '40%';
+    const fd = new FormData(); fd.append('file', f);
+    const r  = await fetch(`${API}/api/knowledge/upload`, { method: 'POST', body: fd });
+    document.getElementById('upbar').style.width = '100%';
+    document.getElementById('uptxt').textContent = `✅ ${f.name} — đang xử lý AI...`;
+    toast(`Upload xong: ${f.name}`, 'blue');
+    loadDocs();
+  }
+  setTimeout(() => document.getElementById('upprog').style.display = 'none', 3000);
+}
+
+async function deleteDoc(id) {
+  if (!confirm('Xóa tài liệu này?')) return;
+  await apiFetch(`/api/knowledge/docs/${id}`, 'DELETE');
+  toast('Đã xóa tài liệu', 'amber'); loadDocs();
+}
+
+// ── Chat test ─────────────────────────────────────────────────────
+async function sendChat() {
+  const inp  = document.getElementById('chatin');
+  const text = inp.value.trim();
+  if (!text) return; inp.value = '';
+  const log  = document.getElementById('chatlog');
+  const add  = (role, cnt) => {
+    const d = document.createElement('div');
+    d.className = 'cm ' + role;
+    d.innerHTML = `<div class="me">${role==='u'?'👤 Bạn':'🤖 Aria'}</div>${cnt}`;
+    log.appendChild(d); log.scrollTop = log.scrollHeight;
+  };
+  // Xóa placeholder
+  if (log.children.length === 0 || log.textContent.includes('Chờ')) log.innerHTML = '';
+  add('u', text);
+  const pending = document.createElement('div');
+  pending.className = 'cm a';
+  pending.innerHTML = '<div class="me">🤖 Aria</div><span style="color:var(--muted)">Đang xử lý...</span>';
+  log.appendChild(pending); log.scrollTop = log.scrollHeight;
+  try {
+    const d = await apiFetch('/api/chat', 'POST', { text, session_key: chatSid });
+    pending.innerHTML = `<div class="me">🤖 Aria</div>${d.text||d.message||'Lỗi'}`;
+  } catch(e) {
+    pending.innerHTML = `<div class="me">🤖 Aria</div><span style="color:var(--red)">Lỗi: ${e.message}</span>`;
+  }
+}
+
+async function testAI() {
+  const q   = document.getElementById('test-q').value || 'Xin chào';
+  const el  = document.getElementById('test-r');
+  el.style.display = 'block'; el.textContent = 'Đang hỏi AI...'; el.style.color = 'var(--muted)';
+  try {
+    const d = await apiFetch('/api/chat', 'POST', { text: q, session_key: 'dash_test' });
+    el.textContent = d.text || d.message; el.style.color = 'var(--text)';
+  } catch(e) { el.textContent = 'Lỗi: ' + e.message; el.style.color = 'var(--red)'; }
+}
+
+// ── Telegram ──────────────────────────────────────────────────────
+async function checkTg() {
+  const el = document.getElementById('tgr');
+  el.style.display = 'block'; el.textContent = 'Đang kiểm tra...'; el.style.color = 'var(--muted)';
+  const d = await apiFetch('/api/telegram/status');
+  el.style.color = d.status === 'ok' ? 'var(--green)' : 'var(--red)';
+  el.textContent = d.status === 'ok'
+    ? `✅ Bot: @${d.username} (${d.name})`
+    : `❌ ${d.message || 'Token không hợp lệ'}`;
+}
+
+async function sendTgTest() {
+  const id  = document.getElementById('tgid').value.trim();
+  const msg = document.getElementById('tgmsg').value;
+  if (!id) { toast('Nhập Chat ID', 'red'); return; }
+  const d = await apiFetch('/api/telegram/test', 'POST', { chat_id: id, message: msg });
+  toast(d.status === 'sent' ? `✅ Đã gửi đến ${id}` : '❌ Gửi thất bại', d.status==='sent'?'green':'red');
+}
+
+// ── Voice ────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const spd = document.getElementById('vspd');
+  if (spd) spd.addEventListener('input', () => {
+    document.getElementById('vspdv').textContent = (spd.value / 100).toFixed(2);
+  });
+});
+
+async function saveVoice() {
+  const speed = document.getElementById('vspd').value / 100;
+  const lang  = document.getElementById('vlang').value;
+  await apiFetch('/api/voice/settings', 'POST', { speed, lang });
+  toast('Đã lưu cài đặt giọng nói', 'green');
+}
+
+async function previewVoice() {
+  const a = document.getElementById('vprev');
+  a.style.display = 'block';
+  a.src = `${API}/api/voice/preview?t=${Date.now()}`;
+  a.load(); a.play().catch(() => {});
+}
+
+async function testTTS() {
+  const text = document.getElementById('ttstext').value;
+  const r    = await fetch(`${API}/api/voice/preview?text=${encodeURIComponent(text)}`);
+  if (r.ok) {
+    const b   = await r.blob();
+    const a   = document.getElementById('ttsaud');
+    a.style.display = 'block';
+    a.src = URL.createObjectURL(b);
+    a.play().catch(() => {});
+  } else toast('TTS thất bại — kiểm tra GROQ_API_KEY', 'red');
+}
+
+// ── Admin say ─────────────────────────────────────────────────────
+async function adminSay() {
+  const text = document.getElementById('say-t').value.trim();
+  if (!text) return;
+  await apiFetch('/api/admin/say', 'POST', { text });
+  toast('🔊 Đang phát: ' + text, 'blue');
+}
+
+// ── Logs ─────────────────────────────────────────────────────────
+function addLog(text) {
+  const el = document.getElementById('livelog');
+  if (el.firstChild?.textContent?.includes('Chờ')) el.innerHTML = '';
+  const d = document.createElement('div');
+  d.style.cssText = 'font-size:11px;color:var(--muted);border-bottom:1px solid rgba(100,160,255,.05);padding:3px 0;font-family:monospace';
+  d.textContent = `[${new Date().toLocaleTimeString('vi-VN')}] ${text}`;
+  el.appendChild(d); el.scrollTop = el.scrollHeight;
+}
+function clearLog() { document.getElementById('livelog').innerHTML = ''; }
+
+// ── Utils ─────────────────────────────────────────────────────────
+async function apiFetch(path, method = 'GET', body = null) {
+  const opts = { method, headers: {} };
+  if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  const r = await fetch(API + path, opts);
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({ detail: r.statusText }));
+    throw new Error(err.detail || r.statusText);
+  }
+  return r.json();
+}
+
+function toast(msg, type = 'blue') {
+  const c = { green:'var(--green)', red:'var(--red)', blue:'var(--blue)', amber:'var(--amber)' };
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.style.borderColor = c[type]; el.style.color = c[type];
+  el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+connect();
+</script>
+</body>
+</html>

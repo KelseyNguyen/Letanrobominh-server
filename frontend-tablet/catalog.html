@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Danh mục Robot — Aria</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#07101f;color:#c8deff;font-family:system-ui,sans-serif;min-height:100vh}
+.header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(80,140,255,.15);position:sticky;top:0;background:#07101f;z-index:10}
+.htitle{font-size:18px;font-weight:500;color:#5ab4ff}
+.back{padding:7px 14px;border-radius:8px;border:1px solid rgba(80,140,255,.3);background:none;color:rgba(140,190,255,.7);cursor:pointer;font-size:13px}
+.cats{display:flex;gap:8px;padding:14px 18px;flex-wrap:wrap}
+.cat{padding:6px 14px;border-radius:20px;border:1px solid rgba(80,140,255,.2);background:none;color:rgba(150,190,255,.6);cursor:pointer;font-size:13px;transition:.2s}
+.cat.on,.cat:hover{background:rgba(90,180,255,.12);border-color:rgba(90,180,255,.4);color:#5ab4ff}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;padding:0 18px 18px}
+.rcard{background:rgba(18,36,70,.7);border:1px solid rgba(80,140,255,.2);border-radius:14px;padding:20px;cursor:pointer;transition:all .25s}
+.rcard:hover{border-color:rgba(90,180,255,.5);transform:translateY(-2px)}
+.rico{font-size:36px;margin-bottom:12px;text-align:center}
+.rname{font-size:15px;font-weight:500;color:#8ecfff;margin-bottom:6px}
+.rdesc{font-size:12px;color:rgba(150,200,255,.55);margin-bottom:12px;line-height:1.5}
+.rspecs{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.rs{display:flex;justify-content:space-between;font-size:12px}
+.rsl{color:rgba(150,190,255,.5)}.rsv{color:#a0d4ff;font-weight:500}
+.rprice{display:inline-block;padding:4px 12px;border-radius:20px;background:rgba(90,180,255,.1);border:1px solid rgba(90,180,255,.2);font-size:12px;color:#5ab4ff;font-weight:600}
+.askbtn{display:block;width:100%;margin-top:12px;padding:9px;border-radius:8px;border:1px solid rgba(90,180,255,.2);background:rgba(90,180,255,.08);color:#5ab4ff;cursor:pointer;font-size:13px;transition:.2s}
+.askbtn:hover{background:rgba(90,180,255,.2)}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="htitle">🦾 Danh mục Robot</div>
+  <button class="back" onclick="goBack()">← Quay lại</button>
+</div>
+<div class="cats">
+  <button class="cat on" onclick="filter('all',this)">Tất cả</button>
+  <button class="cat" onclick="filter('industrial',this)">Công nghiệp</button>
+  <button class="cat" onclick="filter('service',this)">Dịch vụ</button>
+  <button class="cat" onclick="filter('cobot',this)">Cobot</button>
+  <button class="cat" onclick="filter('logistics',this)">Logistics</button>
+</div>
+<div class="grid" id="grid"></div>
+<script>
+const ROBOTS = [
+  {id:'x1',cat:'industrial',icon:'🦾',name:'ARIA-X1 Robot Công Nghiệp',
+   desc:'Robot 6 bậc tự do, hàn cắt lắp ráp chính xác cao trong môi trường công nghiệp nặng.',
+   specs:{'Tải trọng':'10–200 kg','Tầm với':'1.5–3.2 m','Chính xác':'±0.02 mm','IP':'IP67'},
+   price:'Từ 150 triệu'},
+  {id:'c3',cat:'cobot',icon:'🤝',name:'ARIA-C3 Cobot',
+   desc:'Robot cộng tác, làm việc an toàn bên cạnh người, không cần rào chắn bảo vệ.',
+   specs:{'Tải trọng':'3–16 kg','Tầm với':'850–1300 mm','An toàn':'ISO/TS 15066','Lập trình':'Kéo-thả'},
+   price:'Từ 120 triệu'},
+  {id:'w2',cat:'logistics',icon:'📦',name:'ARIA-W2 Robot Kho AMR',
+   desc:'Robot tự hành trong kho, điều hướng SLAM LiDAR, tích hợp WMS.',
+   specs:{'Tải trọng':'500 kg','Tốc độ':'1.5 m/s','Pin':'8 tiếng','Nav':'SLAM LiDAR'},
+   price:'Từ 200 triệu'},
+  {id:'s1',cat:'service',icon:'🤖',name:'ARIA-S Robot Lễ Tân',
+   desc:'AI nhận diện khuôn mặt, giọng nói, tư vấn đa ngôn ngữ. Đúng như robot bạn đang dùng!',
+   specs:{'Display':'12" cảm ứng','AI':'NLP + Vision','Camera':'4K + ToF','Pin':'12 tiếng'},
+   price:'Từ 80 triệu'},
+  {id:'p1',cat:'industrial',icon:'🦿',name:'ARIA-P1 Cánh Tay Robot',
+   desc:'7 bậc tự do, lắp ráp điện tử và dược phẩm tốc độ cao, cycle time < 0.5s.',
+   specs:{'Bậc tự do':'7 DOF','Tải trọng':'5 kg','Tầm với':'800 mm','Cycle':'<0.5s'},
+   price:'Từ 95 triệu'},
+  {id:'h1',cat:'industrial',icon:'⚡',name:'ARIA-H1 Robot Hàn',
+   desc:'Robot hàn chuyên dụng, hàn MIG/TIG/laser, độ chính xác đường hàn ±0.1mm.',
+   specs:{'Loại hàn':'MIG/TIG/Laser','Tốc độ':'1.2 m/phút','Chính xác':'±0.1 mm','IP':'IP54'},
+   price:'Từ 130 triệu'},
+];
+let cur = 'all';
+function filter(cat, el) {
+  cur = cat;
+  document.querySelectorAll('.cat').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  render();
+}
+function render() {
+  const list = cur === 'all' ? ROBOTS : ROBOTS.filter(r => r.cat === cur);
+  document.getElementById('grid').innerHTML = list.map(r => `
+    <div class="rcard">
+      <div class="rico">${r.icon}</div>
+      <div class="rname">${r.name}</div>
+      <div class="rdesc">${r.desc}</div>
+      <div class="rspecs">${Object.entries(r.specs).map(([k,v]) =>
+        `<div class="rs"><span class="rsl">${k}</span><span class="rsv">${v}</span></div>`).join('')}
+      </div>
+      <div class="rprice">💰 ${r.price}</div>
+      <button class="askbtn" onclick="ask('${r.name}')">💬 Hỏi về robot này</button>
+    </div>`).join('');
+}
+function ask(name) {
+  if (window.opener) window.opener.postMessage({ type:'ask_robot', name }, '*');
+  if (window.parent !== window) window.parent.postMessage({ type:'ask_robot', name }, '*');
+  goBack();
+}
+function goBack() {
+  if (window.history.length > 1) { window.history.back(); return; }
+  window.location.href = '/tablet';
+}
+render();
+</script>
+</body>
+</html>

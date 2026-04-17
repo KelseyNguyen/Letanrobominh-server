@@ -1,0 +1,30 @@
+fastapi
+uvicorn[standard]
+python-multipart
+sqlalchemy
+python-dotenv
+httpx
+aiofiles
+websockets
+pydantic
+
+# STT + TTS
+groq
+gTTS
+
+# Face recognition
+opencv-python-headless
+numpy
+
+# RAG / Knowledge Base
+chromadb
+sentence-transformers
+
+# Document readers
+pymupdf
+python-docx
+openpyxl
+Pillow
+
+# Utils
+python-dateutil

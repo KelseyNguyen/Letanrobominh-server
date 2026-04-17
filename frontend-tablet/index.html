@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Aria — AI Lễ Tân</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#060d18;font-family:system-ui,sans-serif;user-select:none}
+
+/* Ambient rings */
+.ring{position:absolute;top:50%;left:50%;border-radius:50%;border:1px solid rgba(80,160,255,.1);transform:translate(-50%,-50%);pointer-events:none}
+.ring:nth-child(1){width:420px;height:420px;animation:pulse 4s ease-in-out infinite}
+.ring:nth-child(2){width:520px;height:520px;animation:pulse 4s ease-in-out infinite .8s}
+.ring:nth-child(3){width:620px;height:620px;animation:pulse 4s ease-in-out infinite 1.6s}
+@keyframes pulse{0%,100%{opacity:.1;transform:translate(-50%,-50%) scale(1)}50%{opacity:.25;transform:translate(-50%,-50%) scale(1.02)}}
+
+/* Layout */
+#root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;position:relative;z-index:10;gap:8px}
+
+/* Status bar */
+#statusbar{position:absolute;top:18px;left:0;right:0;display:flex;justify-content:center;align-items:center;gap:8px}
+.sdot{width:7px;height:7px;border-radius:50%;background:#00e896;box-shadow:0 0 7px #00e896;animation:blink 2s ease-in-out infinite}
+.sdot.off{background:#ff4d55;box-shadow:0 0 7px #ff4d55;animation:none}
+#slabel{font-size:11px;letter-spacing:1.5px;color:rgba(100,180,255,.6);text-transform:uppercase}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Clock */
+#clock{position:absolute;top:18px;right:18px;text-align:right}
+#clocktime{font-size:24px;font-weight:300;color:rgba(190,220,255,.8)}
+#clockdate{font-size:10px;color:rgba(120,160,200,.45);margin-top:1px}
+
+/* Robot face */
+#facesvg{width:240px;height:240px;filter:drop-shadow(0 0 22px rgba(60,150,255,.35))}
+
+/* Voice bars */
+#vbars{display:flex;align-items:flex-end;gap:3px;height:20px}
+.vb{width:4px;background:rgba(80,160,255,.3);border-radius:2px;transition:height .08s}
+#vbars.listening .vb{background:#00e896;animation:vwave .5s ease-in-out infinite alternate}
+#vbars.speaking  .vb{background:#4ab4ff;animation:vwave .4s ease-in-out infinite alternate}
+.vb:nth-child(1){animation-delay:0s}.vb:nth-child(2){animation-delay:.08s}
+.vb:nth-child(3){animation-delay:.16s}.vb:nth-child(4){animation-delay:.24s}
+.vb:nth-child(5){animation-delay:.32s}.vb:nth-child(6){animation-delay:.4s}
+.vb:nth-child(7){animation-delay:.48s}
+@keyframes vwave{0%{height:3px}100%{height:18px}}
+
+/* Subtitle */
+#userline{font-size:11px;color:rgba(130,175,255,.5);font-style:italic;min-height:14px;text-align:center}
+#subtitle{max-width:86vw;text-align:center;color:rgba(210,235,255,.92);font-size:clamp(14px,3.5vw,19px);font-weight:300;line-height:1.55;min-height:26px;transition:opacity .25s;text-shadow:0 0 18px rgba(80,160,255,.4)}
+
+/* Catalog overlay */
+#catalog{display:none;position:fixed;inset:0;background:#07101f;z-index:50;flex-direction:column}
+#catalog.show{display:flex}
+#cath{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(80,140,255,.15)}
+#cattitle{color:#5ab4ff;font-size:17px;font-weight:500}
+#catclose{background:none;border:1px solid rgba(80,140,255,.3);color:rgba(140,190,255,.7);padding:6px 14px;border-radius:8px;font-size:13px;cursor:pointer}
+#catgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:14px;overflow-y:auto;flex:1}
+.rcard{background:rgba(18,38,75,.7);border:1px solid rgba(80,140,255,.2);border-radius:12px;padding:14px 10px;text-align:center;cursor:pointer;transition:all .2s}
+.rcard:active{border-color:rgba(80,140,255,.7);background:rgba(30,60,120,.9)}
+.ricon{font-size:30px;margin-bottom:7px}
+.rname{font-size:12px;color:#8ec8ff;font-weight:500}
+.rdesc{font-size:10px;color:rgba(140,190,255,.5);margin-top:3px}
+
+/* Company tag */
+#company{position:absolute;bottom:14px;font-size:10px;letter-spacing:2.5px;color:rgba(80,110,160,.35);text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="ring"></div><div class="ring"></div><div class="ring"></div>
+
+<!-- Status bar -->
+<div id="statusbar">
+  <div class="sdot off" id="sdot"></div>
+  <span id="slabel">Khởi động...</span>
+</div>
+
+<!-- Clock -->
+<div id="clock">
+  <div id="clocktime">--:--</div>
+  <div id="clockdate">--/--/----</div>
+</div>
+
+<!-- Robot face -->
+<div id="root">
+  <svg id="facesvg" viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="iL" cx="38%" cy="32%" r="62%">
+        <stop offset="0%" stop-color="#22ddff"/>
+        <stop offset="50%" stop-color="#0077cc"/>
+        <stop offset="100%" stop-color="#002255"/>
+      </radialGradient>
+      <radialGradient id="iR" cx="38%" cy="32%" r="62%">
+        <stop offset="0%" stop-color="#22ddff"/>
+        <stop offset="50%" stop-color="#0077cc"/>
+        <stop offset="100%" stop-color="#002255"/>
+      </radialGradient>
+      <filter id="ef"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      <filter id="gg"><feGaussianBlur stdDeviation="7"/></filter>
+      <clipPath id="lcl"><ellipse cx="72" cy="86" rx="35" ry="29"/></clipPath>
+      <clipPath id="rcl"><ellipse cx="168" cy="86" rx="35" ry="29"/></clipPath>
+      <clipPath id="mclip"><rect x="76" y="143" width="88" height="24" rx="12"/></clipPath>
+    </defs>
+
+    <!-- Glow behind eyes -->
+    <ellipse cx="72" cy="86" rx="50" ry="42" fill="#0055cc" opacity="0.18" filter="url(#gg)"/>
+    <ellipse cx="168" cy="86" rx="50" ry="42" fill="#0055cc" opacity="0.18" filter="url(#gg)"/>
+
+    <!-- Left eye socket -->
+    <ellipse cx="72" cy="86" rx="37" ry="31" fill="#040c1a" stroke="#0d3055" stroke-width="1.5"/>
+
+    <!-- Left eye (blink via scaleY on this group) -->
+    <g id="leye" style="transform-origin:72px 86px">
+      <ellipse cx="72" cy="86" rx="28" ry="24" fill="url(#iL)" filter="url(#ef)"/>
+      <ellipse cx="72" cy="86" rx="11" ry="11" fill="#001228"/>
+      <ellipse cx="79" cy="79" rx="5.5" ry="4.5" fill="white" opacity="0.7"/>
+      <ellipse cx="66" cy="92" rx="2.5" ry="2" fill="white" opacity="0.28"/>
+      <ellipse cx="72" cy="86" rx="28" ry="24" fill="none" stroke="#00ccff" stroke-width="0.7" opacity="0.4"/>
+    </g>
+
+    <!-- Right eye socket -->
+    <ellipse cx="168" cy="86" rx="37" ry="31" fill="#040c1a" stroke="#0d3055" stroke-width="1.5"/>
+
+    <!-- Right eye -->
+    <g id="reye" style="transform-origin:168px 86px">
+      <ellipse cx="168" cy="86" rx="28" ry="24" fill="url(#iR)" filter="url(#ef)"/>
+      <ellipse cx="168" cy="86" rx="11" ry="11" fill="#001228"/>
+      <ellipse cx="175" cy="79" rx="5.5" ry="4.5" fill="white" opacity="0.7"/>
+      <ellipse cx="162" cy="92" rx="2.5" ry="2" fill="white" opacity="0.28"/>
+      <ellipse cx="168" cy="86" rx="28" ry="24" fill="none" stroke="#00ccff" stroke-width="0.7" opacity="0.4"/>
+    </g>
+
+    <!-- Mouth track -->
+    <rect x="76" y="143" width="88" height="24" rx="12" fill="#040c1a" stroke="#0d3055" stroke-width="1.5"/>
+    <!-- Mouth (idle = gentle smile) -->
+    <path id="mpath" d="M 86 156 Q 120 163 154 156" stroke="#00aaff" stroke-width="2.5" fill="none" stroke-linecap="round" clip-path="url(#mclip)"/>
+  </svg>
+
+  <!-- Voice bars -->
+  <div id="vbars">
+    <div class="vb" style="height:4px"></div><div class="vb" style="height:9px"></div>
+    <div class="vb" style="height:6px"></div><div class="vb" style="height:16px"></div>
+    <div class="vb" style="height:4px"></div><div class="vb" style="height:11px"></div>
+    <div class="vb" style="height:7px"></div>
+  </div>
+
+  <!-- Subtitle area -->
+  <div id="userline"></div>
+  <div id="subtitle">Xin chào! Em là Aria</div>
+</div>
+
+<!-- Catalog overlay -->
+<div id="catalog">
+  <div id="cath">
+    <div id="cattitle">Danh mục Robot</div>
+    <button id="catclose" onclick="closeCatalog()">← Quay lại</button>
+  </div>
+  <div id="catgrid">
+    <div class="rcard" onclick="askRobot('robot công nghiệp')"><div class="ricon">🦾</div><div class="rname">Công Nghiệp</div><div class="rdesc">Hàn, cắt, lắp ráp</div></div>
+    <div class="rcard" onclick="askRobot('cobot')"><div class="ricon">🤝</div><div class="rname">Cobot</div><div class="rdesc">Cộng tác người</div></div>
+    <div class="rcard" onclick="askRobot('robot kho')"><div class="ricon">📦</div><div class="rname">Robot Kho</div><div class="rdesc">AMR tự hành</div></div>
+    <div class="rcard" onclick="askRobot('robot dịch vụ')"><div class="ricon">🤖</div><div class="rname">Dịch Vụ</div><div class="rdesc">Lễ tân, hỗ trợ</div></div>
+    <div class="rcard" onclick="askRobot('cánh tay robot')"><div class="ricon">🦿</div><div class="rname">Cánh Tay</div><div class="rdesc">Lắp ráp linh hoạt</div></div>
+    <div class="rcard" onclick="askRobot('robot hàn')"><div class="ricon">⚡</div><div class="rname">Robot Hàn</div><div class="rdesc">Hàn chính xác</div></div>
+  </div>
+</div>
+
+<!-- Company -->
+<div id="company">AI Robot Solutions</div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────
+const HOST    = location.host;
+const WS_PROT = location.protocol === 'https:' ? 'wss' : 'ws';
+const WS_URL  = `${WS_PROT}://${HOST}/ws/tablet/tb_${Math.random().toString(36).slice(2,9)}`;
+
+let ws, audioCtx, curSrc;
+let sessionKey  = 'sk_' + Date.now();
+let capturing   = false;
+let silTimer    = null;
+let mediaRec    = null;
+let audioChunks = [];
+let camStream   = null;
+let camCanvas   = null;
+let camTimer    = null;
+
+// ── Clock ─────────────────────────────────────────────────────────
+function tick() {
+  const n = new Date();
+  document.getElementById('clocktime').textContent =
+    n.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
+  document.getElementById('clockdate').textContent =
+    n.toLocaleDateString('vi-VN', {weekday:'short', day:'2-digit', month:'2-digit', year:'numeric'});
+}
+setInterval(tick, 1000); tick();
+
+// ── Status ─────────────────────────────────────────────────────────
+function setStatus(label, ok) {
+  document.getElementById('sdot').className = 'sdot' + (ok ? '' : ' off');
+  document.getElementById('slabel').textContent = label;
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen  = () => { setStatus('Sẵn sàng', true); initMic(); initCam(); heartbeat(); };
+  ws.onclose = () => { setStatus('Mất kết nối', false); setTimeout(connect, 3000); };
+  ws.onerror = () => ws.close();
+  ws.onmessage = e => onMsg(JSON.parse(e.data));
+}
+
+function onMsg(m) {
+  switch (m.type) {
+    case 'face_recognized':
+    case 'face_unknown':
+      showSub(m.greeting || '');
+      if (m.session_key) sessionKey = m.session_key;
+      glowFace(m.type === 'face_recognized' ? 'green' : 'blue');
+      break;
+    case 'user_text':
+      document.getElementById('userline').textContent = '👤 ' + m.text;
+      break;
+    case 'assistant_text':
+      showSub(m.text || '');
+      if (m.robot_model) showCatalog(m.robot_model);
+      if (m.guest_name && m.guest_name !== sessionKey) sessionKey = 'guest_' + m.guest_name;
+      break;
+    case 'show_catalog':
+      showCatalog(m.model);
+      break;
+    case 'admin_say':
+      showSub(m.text || '');
+      break;
+    case 'audio':
+      playAudio(m.data);
+      break;
+    case 'pong':
+      break;
+  }
+}
+
+// ── Mic / VAD ─────────────────────────────────────────────────────
+async function initMic() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 16000 }
+    });
+    mediaRec = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    mediaRec.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+    mediaRec.onstop = sendAudio;
+
+    // Simple energy VAD
+    const vCtx = new AudioContext();
+    const src  = vCtx.createMediaStreamSource(stream);
+    const ana  = vCtx.createAnalyser();
+    ana.fftSize = 256;
+    src.connect(ana);
+    const buf = new Uint8Array(ana.frequencyBinCount);
+
+    function vad() {
+      ana.getByteFrequencyData(buf);
+      const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
+      if (avg > 16 && !capturing) {
+        capturing = true;
+        audioChunks = [];
+        if (mediaRec.state === 'inactive') mediaRec.start();
+        stopAudio();  // interrupt Aria if speaking
+        document.getElementById('vbars').classList.add('listening');
+        setStatus('Lắng nghe...', true);
+        clearTimeout(silTimer);
+        silTimer = setTimeout(() => {
+          if (mediaRec.state === 'recording') mediaRec.stop();
+          capturing = false;
+          document.getElementById('vbars').classList.remove('listening');
+        }, 1800);
+      }
+      requestAnimationFrame(vad);
+    }
+    vad();
+  } catch (e) {
+    setStatus('Không có mic', false);
+    console.warn('Mic error:', e.message);
+  }
+}
+
+function sendAudio() {
+  if (!audioChunks.length) return;
+  const blob = new Blob(audioChunks, { type: 'audio/webm' });
+  audioChunks = [];
+  const rd = new FileReader();
+  rd.onload = () => {
+    if (ws && ws.readyState === 1)
+      ws.send(JSON.stringify({
+        type: 'audio_chunk',
+        data: rd.result.split(',')[1],
+        session_key: sessionKey
+      }));
+    setStatus('Đang xử lý...', true);
+  };
+  rd.readAsDataURL(blob);
+}
+
+// ── Camera (gửi frame lên server nhận diện) ───────────────────────
+async function initCam() {
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } }
+    });
+    const vid = document.createElement('video');
+    vid.srcObject = camStream;
+    vid.autoplay  = true;
+    vid.playsInline = true;
+    vid.muted = true;
+    camCanvas = document.createElement('canvas');
+    camCanvas.width  = 320;
+    camCanvas.height = 240;
+    vid.onloadedmetadata = () => {
+      vid.play();
+      camTimer = setInterval(() => {
+        if (!ws || ws.readyState !== 1) return;
+        camCanvas.getContext('2d').drawImage(vid, 0, 0, 320, 240);
+        camCanvas.toBlob(blob => {
+          if (!blob) return;
+          const rd = new FileReader();
+          rd.onload = () => ws.send(JSON.stringify({
+            type: 'camera_frame',
+            data: rd.result.split(',')[1]
+          }));
+          rd.readAsDataURL(blob);
+        }, 'image/jpeg', 0.55);
+      }, 1500);
+    };
+  } catch (e) {
+    console.warn('Camera not available:', e.message);
+  }
+}
+
+// ── Audio playback ─────────────────────────────────────────────────
+async function playAudio(b64) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    stopAudio();
+    const buf     = Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer;
+    const decoded = await audioCtx.decodeAudioData(buf);
+    curSrc = audioCtx.createBufferSource();
+    curSrc.buffer = decoded;
+    curSrc.connect(audioCtx.destination);
+    curSrc.start();
+    setStatus('Đang nói...', true);
+    document.getElementById('vbars').classList.add('speaking');
+    autoLipSync(document.getElementById('subtitle').textContent);
+    curSrc.onended = () => {
+      setStatus('Lắng nghe', true);
+      document.getElementById('vbars').classList.remove('speaking');
+      setMouth('SIL');
+      curSrc = null;
+    };
+  } catch (e) {
+    console.warn('Audio error:', e.message);
+  }
+}
+
+function stopAudio() {
+  if (curSrc) { try { curSrc.stop(); } catch(e){} curSrc = null; }
+  document.getElementById('vbars').classList.remove('speaking');
+}
+
+// ── Lip sync (dùng mpath thay vì mopen/ulip/llip) ─────────────────
+const MSHAPES = {
+  SIL: "M 86 156 Q 120 162 154 156",
+  AA:  "M 86 153 Q 120 172 154 153",
+  EH:  "M 86 154 Q 120 168 154 154",
+  IH:  "M 88 155 Q 120 165 152 155",
+  OW:  "M 88 154 Q 120 170 152 154",
+  UW:  "M 90 155 Q 120 169 150 155",
+  PP:  "M 86 157 Q 120 157 154 157",
+  FF:  "M 86 156 Q 120 160 154 156",
+  DD:  "M 86 155 Q 120 163 154 155",
+  NN:  "M 87 155 Q 120 162 153 155",
+  SS:  "M 87 156 Q 120 161 153 156",
+  LL:  "M 86 155 Q 120 163 154 155",
+  KK:  "M 88 155 Q 120 162 152 155",
+  HH:  "M 86 154 Q 120 165 154 154",
+};
+const VMAP = {
+  'a':'AA','ă':'AA','â':'AA','e':'EH','ê':'EH','i':'IH','y':'IH',
+  'o':'OW','ô':'OW','ơ':'OW','u':'UW','ư':'UW',
+  'b':'PP','p':'PP','m':'PP','f':'FF','v':'FF',
+  'd':'DD','t':'DD','n':'NN','s':'SS','x':'SS',
+  'l':'LL','r':'LL','k':'KK','c':'KK','q':'KK',
+  'h':'HH',' ':'SIL',
+};
+
+function setMouth(vis) {
+  const mp = document.getElementById('mpath');
+  if (mp) mp.setAttribute('d', MSHAPES[vis] || MSHAPES.SIL);
+}
+
+let lipTmr = null;
+function autoLipSync(text) {
+  clearTimeout(lipTmr);
+  // Bỏ emoji và ký tự đặc biệt trước khi lip sync
+  const clean = text.replace(/[^\p{L}\p{N}\p{Z}\p{P}]/gu, '');
+  const chars = [...clean.toLowerCase()];
+  let i = 0;
+  function next() {
+    if (i >= chars.length) { setMouth('SIL'); return; }
+    setMouth(VMAP[chars[i]] || 'SIL');
+    i++;
+    lipTmr = setTimeout(next, 72);
+  }
+  next();
+}
+
+// ── Eye blink (dùng CSS scaleY) ───────────────────────────────────
+function blink() {
+  const le = document.getElementById('leye');
+  const re = document.getElementById('reye');
+  if (!le || !re) return;
+  le.style.transform = 'scaleY(0.06)';
+  re.style.transform = 'scaleY(0.06)';
+  setTimeout(() => {
+    le.style.transform = 'scaleY(1)';
+    re.style.transform = 'scaleY(1)';
+  }, 120);
+}
+le = document.getElementById('leye');
+re = document.getElementById('reye');
+if (le) { le.style.transition = 'transform 0.06s'; }
+if (re) { re.style.transition = 'transform 0.06s'; }
+setInterval(() => { if (Math.random() > .38) blink(); }, 2800 + Math.random() * 3000);
+
+// ── Idle eye wander ───────────────────────────────────────────────
+function idleEyes() {
+  const dx = (Math.random() - .5) * 10;
+  const dy = (Math.random() - .5) * 5;
+  // Left pupil (second ellipse inside #leye)
+  const lPupil = document.querySelector('#leye ellipse:nth-child(2)');
+  const rPupil = document.querySelector('#reye ellipse:nth-child(2)');
+  if (lPupil) { lPupil.setAttribute('cx', 72 + dx); lPupil.setAttribute('cy', 86 + dy); }
+  if (rPupil) { rPupil.setAttribute('cx', 168 + dx); rPupil.setAttribute('cy', 86 + dy); }
+}
+setInterval(idleEyes, 2400 + Math.random() * 2200);
+
+// ── Subtitle ──────────────────────────────────────────────────────
+function stripEmoji(text) {
+  return text.replace(/[^\p{L}\p{N}\p{Z}\p{P}]/gu, '').replace(/\s+/g,' ').trim();
+}
+let subTmr = null;
+function showSub(text) {
+  const clean = stripEmoji(text || '');
+  const el = document.getElementById('subtitle');
+  el.style.opacity = '0';
+  setTimeout(() => { el.textContent = clean; el.style.opacity = '1'; }, 140);
+  clearTimeout(subTmr);
+  subTmr = setTimeout(() => { el.style.opacity = '.3'; }, 12000);
+}
+
+// ── Glow effect ───────────────────────────────────────────────────
+function glowFace(color) {
+  const c = color === 'green' ? 'rgba(0,230,140,.55)' : 'rgba(60,160,255,.5)';
+  const svg = document.getElementById('facesvg');
+  svg.style.filter = `drop-shadow(0 0 36px ${c})`;
+  setTimeout(() => {
+    svg.style.filter = 'drop-shadow(0 0 22px rgba(60,150,255,.35))';
+  }, 2500);
+}
+
+// ── Catalog ───────────────────────────────────────────────────────
+function showCatalog(model) {
+  document.getElementById('root').style.opacity = '0';
+  document.getElementById('catalog').classList.add('show');
+  document.getElementById('cattitle').textContent =
+    model === 'catalog' ? 'Danh mục Robot' : 'Robot: ' + model.toUpperCase();
+}
+function closeCatalog() {
+  document.getElementById('catalog').classList.remove('show');
+  document.getElementById('root').style.opacity = '1';
+}
+function askRobot(type) {
+  closeCatalog();
+  if (ws && ws.readyState === 1)
+    ws.send(JSON.stringify({
+      type: 'text_message',
+      text: `Cho tôi biết thêm về ${type}`,
+      session_key: sessionKey
+    }));
+}
+
+// ── Heartbeat ─────────────────────────────────────────────────────
+function heartbeat() {
+  setInterval(() => {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: 'ping' }));
+  }, 25000);
+}
+
+// ── Resume AudioContext on touch ──────────────────────────────────
+document.addEventListener('touchstart', () => {
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}, { passive: true });
+
+// ── Start ─────────────────────────────────────────────────────────
+connect();
+</script>
+</body>
+</html>
